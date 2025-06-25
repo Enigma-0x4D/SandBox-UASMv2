@@ -1,0 +1,13 @@
+%include "libs/lta15p.sba"
+
+ldi R0 0
+ldi R1 1
+ldi R2 0
+ldi R3 (loop & 0xff)
+ldi DWR ((loop >> 8) & 0xff)
+
+loop:
+add R2 R0 R1
+mov R0 R1
+mov R1 R2
+jmp R3 R3
