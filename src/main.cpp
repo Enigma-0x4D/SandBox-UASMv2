@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
 	CommandArguments args;
 	args.parse(argc, argv);
 
-	bool splitInstructions = args.shortFlags['w'];
+	bool splitInstructions = !args.shortFlags['w'];
 	bool addMarkers = args.shortFlags['m'];
 	bool showIncludeStack = args.shortFlags['s'];
 	int bytesPerLine = 16;
