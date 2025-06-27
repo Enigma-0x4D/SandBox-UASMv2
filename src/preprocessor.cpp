@@ -20,11 +20,11 @@ Result preprocessor(vector<Expression> &rScript_, vector<ProcessedFile> &rFileSt
 
 		Expression &rThisExpr = rScript_[l];
 		vector<Expression> &line = rThisExpr.expressions;
-
+		
 		if (line.empty()) continue;
 
 		if (line[0].type != Expression::Identifier) return { UnexpectedToken, line[0].toString().stringVal }; // There always should be an identifier at the beginning
-
+		
 		if (line.size() == 2 && line[1].type == Expression::Invalid && line[1].stringVal == ":") continue;
 
 		if (line[0].stringVal != "%define" && line[0].stringVal != "%undef")

@@ -1,3 +1,6 @@
+%if (!lta15p_lib_def)
+%define lta15p_lib_def 1
+
 %include "errors.sba"
 
 %define global CR  r12
@@ -106,6 +109,8 @@
 %define global eval and %include (libPath + "oper") 0xE
 %define global eval or  %include (libPath + "oper") 0xF
 %define global eval mov %include (libPath + "oper1v") 0xF
+
+%endif
 
 /*
 = INSTRUCTION SYNTAX =================================

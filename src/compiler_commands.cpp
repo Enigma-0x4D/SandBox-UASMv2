@@ -51,10 +51,9 @@ Result ifCondition(const vector<Expression> &line_, const vector<Expression> &sc
 
 	if (line_.size() != 2) return { InvalidArgumentCount, "1" };
 
-	Expression cond = line_[1];
-	cond.simplify();
+	Expression cond = line_[1].toBool();
 	if (cond.type == Expression::Invalid) return { UnexpectedToken, line_[1].toString().stringVal };
-	if (cond.nonZero()) return {};
+	if (cond.intVal != 0) return {};
 
 	int loopDepth = 1;
 	for (int fileEndIdx = rGlobalLineIdx_ + 1; fileEndIdx < script_.size(); fileEndIdx++) {

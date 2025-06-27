@@ -336,7 +336,7 @@ bool Expression::simplify(bool keepOperationOrder_) {
 			if (expressions[e].type == Operator && (e == 0 || expressions[e - 1].type == Operator)) {
 				switch (expressions[e].operVal) {
 				case Not:
-					expressions[e + 1] = Expression(expressions[e + 1].isZero());
+					expressions[e + 1] = expressions[e + 1].toBool();
 					break;
 
 				case BinNot:
@@ -422,7 +422,7 @@ Expression Expression::toFloat() const {
 	case Expression::Type::String: {
 		float val;
 		if (!strToNum(stringVal, val)) return {};
-		return Expression(val);
+		return val;
 	}
 	default: return {};
 	}
@@ -435,17 +435,24 @@ Expression Expression::toInt() const {
 	case Expression::Type::String: {
 		int val;
 		if (!strToNum(stringVal, val)) return {};
-		return Expression(val);
+		return val;
 	}
 	default: return {};
 	}
 }
 
-bool Expression::nonZero() const {
-	switch (type) {
-	case Expression::Type::Float: return floatVal != 0.f;
-	case Expression::Type::Integer: return intVal != 0;
-	default: throw; return false; // This shouldn't happen
+Expression Expression::toBool() const {
+	Expression result = *this;
+	result.simplify();
+
+	switch (result.type) {
+	case Expression::Type::Float: return result.floatVal != 0.f;
+	case Expression::Type::Integer: return result.intVal != 0;
+	case Expression::Type::NestedExpression: // <-- Should be evaluated ealier. If it didn't, it means it contains an identifier.
+	case Expression::Type::Identifier: return false; // This will be useful for checking if a macro is defined.
+	case Expression::Type::String: return true; // why not?
+	case Expression::Type::Invalid:
+	case Expression::Type::Operator: return {};
 	}
 }
 

@@ -246,8 +246,7 @@ public:
 	Expression toString(bool removeTrailingZeros_ = true) const;
 	Expression toFloat() const;
 	Expression toInt() const;
-	bool nonZero() const;
-	bool isZero() const { return !nonZero(); };
+	Expression toBool() const;
 	
 	bool isValid() const {
 		if (type == NestedExpression) {
