@@ -62,7 +62,7 @@ Result preprocessor(vector<Expression> &rScript_, vector<ProcessedFile> &rFileSt
 				return { InvalidArgumentCount, "0" };
 		}
 		else if (command == "%file_push") { // %file_push <path> [args...]
-			result = pushFile(line, rFileStack_, macroMap);
+			result = pushFile(line, rFileStack_, globalMacros, macroMap);
 		}
 		else if (command == "%file_pop") { // %file_pop
 			if (line.size() != 1)

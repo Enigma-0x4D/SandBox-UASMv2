@@ -47,7 +47,7 @@ Result undefMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, Mac
 }
 
 // %if <cond>
-Result ifCondition(const vector<Expression> &line_, const vector<Expression> &script_, int &rGlobalLineIdx_, int &rLocalLineIdx_, const MacroRefMap &macroRefMap_) {
+Result ifCondition(const vector<Expression> &line_, vector<Expression> &rScript_, int &rGlobalLineIdx_, int &rLocalLineIdx_, const MacroRefMap &macroRefMap_) {
 
 	if (line_.size() != 2) return { InvalidArgumentCount, "1" };
 
@@ -56,17 +56,19 @@ Result ifCondition(const vector<Expression> &line_, const vector<Expression> &sc
 	if (cond.intVal != 0) return {};
 
 	int loopDepth = 1;
-	for (int fileEndIdx = rGlobalLineIdx_ + 1; fileEndIdx < script_.size(); fileEndIdx++) {
+	for (int fileEndIdx = rGlobalLineIdx_ + 1; fileEndIdx < rScript_.size(); fileEndIdx++) {
 
-		if (!script_[fileEndIdx].expressions.empty() && script_[fileEndIdx].expressions[0].type == Expression::Identifier) {
-			if (script_[fileEndIdx].expressions[0].stringVal == "%if") loopDepth++;
-			else if (script_[fileEndIdx].expressions[0].stringVal == "%endif") loopDepth--;
+		if (!rScript_[fileEndIdx].expressions.empty() && rScript_[fileEndIdx].expressions[0].type == Expression::Identifier) {
+			if (rScript_[fileEndIdx].expressions[0].stringVal == "%if") loopDepth++;
+			else if (rScript_[fileEndIdx].expressions[0].stringVal == "%endif") loopDepth--;
 
 			if (loopDepth == 0) {
 				rLocalLineIdx_ += fileEndIdx - rGlobalLineIdx_;
 				rGlobalLineIdx_ = fileEndIdx;
 				return {};
 			}
+
+			rScript_[fileEndIdx].expressions.clear(); // We clear the lines since other modules don't process %if commands
 		}
 	}
 
@@ -146,7 +148,7 @@ Result defineFile(const vector<Expression> &line_, vector<Expression> &rScript_,
 }
 
 // %file_push <path> [args...]
-Result pushFile(const vector<Expression> &line_, vector<ProcessedFile> &rFileStack_, MacroRefMap &rMacroMap_) {
+Result pushFile(const vector<Expression> &line_, vector<ProcessedFile> &rFileStack_, const MacroMap &globalMacros_, MacroRefMap &rMacroMap_) {
 	if (line_.size() < 2) {
 		return { InvalidArgumentCount, "1 or more" };
 	}
@@ -166,8 +168,7 @@ Result pushFile(const vector<Expression> &line_, vector<ProcessedFile> &rFileSta
 	rFileStack_.back().line--;
 	rFileStack_.push_back(newFile);
 
-	for (auto &l : rFileStack_.back().macros) // genFinalMacroMap() but we only add local macros so global ones stay the same
-		rMacroMap_[l.first] = &l.second;
+	genFinalMacroMap(rMacroMap_, rFileStack_.back().macros, globalMacros_);
 
 	return {};
 }

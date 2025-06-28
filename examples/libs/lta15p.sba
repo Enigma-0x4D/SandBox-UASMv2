@@ -1,5 +1,5 @@
 %if (!lta15p_lib_def)
-%define lta15p_lib_def 1
+%define global lta15p_lib_def 1
 
 %include "errors.sba"
 

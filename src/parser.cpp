@@ -316,15 +316,25 @@ bool Expression::simplify(bool keepOperationOrder_) {
 					expressions[e + 1] = expressions[e + 1].toString();
 					expressions.erase(expressions.begin() + e);
 					break;
+
+				case Not: // ! will work on anything, so we put it before -
+					expressions[e + 1] = !expressions[e + 1].toBool().intVal;
+					expressions.erase(expressions.begin() + e);
+					break;
 				}
 			}
+		}
+
+		if (expressions.size() == 1) {
+			*this = Expression(expressions[0]);
+			return simplify(keepOperationOrder_);
 		}
 
 		bool canBeSimplified = true;
 		for (auto &e : expressions) {
 			canBeSimplified &= e.simplify(keepOperationOrder_);
 
-			if (e.type == Invalid) { // This can lead to some weird things, like the expression becoming invalid after simplifying. It's just important to be aware of that.
+			if (e.type == Invalid) {
 				*this = {};
 				return false;
 			}
@@ -332,13 +342,9 @@ bool Expression::simplify(bool keepOperationOrder_) {
 
 		if (!canBeSimplified) return false;
 
-		for (int e = expressions.size() - 2; e >= 0; e--) { // ! and - are processed separately before other opers // idk if there are any other 1-operand operators
+		for (int e = expressions.size() - 2; e >= 0; e--) {
 			if (expressions[e].type == Operator && (e == 0 || expressions[e - 1].type == Operator)) {
 				switch (expressions[e].operVal) {
-				case Not:
-					expressions[e + 1] = expressions[e + 1].toBool();
-					break;
-
 				case BinNot:
 					if (expressions[e + 1].type != Integer) {
 						*this = {};
@@ -360,10 +366,19 @@ bool Expression::simplify(bool keepOperationOrder_) {
 						return false;
 					}
 					break;
+
+				default: // All other 1-operand operators were removed ealier
+					*this = {};
+					return false;
 				}
 
 				expressions.erase(expressions.begin() + e);
 			}
+		}
+
+		if (expressions.size() == 1) {
+			*this = Expression(expressions[0]);
+			return simplify(keepOperationOrder_);
 		}
 
 		// VVV We are left with an insimplifable list of floats, ints and opers, ... and other things, ... but we can do operation on all of them, so it's fine VVV
