@@ -47,11 +47,16 @@ Result defineMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, Ma
 // %undef ['global'] <macro>
 Result undefMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, MacroMap &rLocalMacros_, MacroRefMap &rMacroRefMap_) {
 
+	if (line_.size() < 2)
+		return { InvalidArgumentCount, "1 or 2" };
+
 	bool global = line_[1].type == Expression::Identifier && line_[1].stringVal == "global";
 
-	(global ? rGlobalMacros_ : rLocalMacros_).erase(line_[1 + global].stringVal);
-	return { InvalidArgumentCount, "1 or 2" };
+	if (global && line_.size() != 2)
+		return { InvalidArgumentCount, "1 or 2" };
 
+	(global ? rGlobalMacros_ : rLocalMacros_).erase(line_[1 + global].stringVal);
+	
 	genFinalMacroMap(rMacroRefMap_, rLocalMacros_, rGlobalMacros_);
 
 	return {};
