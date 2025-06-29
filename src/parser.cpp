@@ -249,7 +249,11 @@ Result Expression::replaceMacros(const MacroRefMap &macroMap_) {
 
 					Expression macroValue = macro.expressions[0];
 
-					macroValue.replaceMacros(macroMap_);
+					{
+						Result err = macroValue.replaceMacros(macroMap_);
+						if (err.code != NoError) return err;
+					}
+
 					// Since we read the tokens from the end of the line, the macros in arguments will already be replaced
 
 					if (expectedArgNum != 0) {
@@ -314,6 +318,15 @@ bool Expression::simplify(bool keepOperationOrder_) {
 
 				case MakeString:
 					expressions[e + 1] = expressions[e + 1].toString();
+					expressions.erase(expressions.begin() + e);
+					break;
+
+				case MakeIdenitifier:
+					if (expressions[e + 1].type != String && expressions[e + 1].type != Identifier /* why not? */) {
+						*this = {};
+						return false;
+					}
+					expressions[e + 1].type = Identifier;
 					expressions.erase(expressions.begin() + e);
 					break;
 
@@ -424,8 +437,21 @@ Expression Expression::toString(bool removeTrailingZeros_) const {
 	case Expression::Type::Float: return Expression::makeString(numToStr(floatVal, std::chars_format::fixed, removeTrailingZeros_));
 	case Expression::Type::String:
 	case Expression::Type::Identifier:
-	case Expression::Type::Invalid: return Expression::makeString(this->stringVal);
-	case Expression::Type::NestedExpression: return Expression::makeString("(...)"); // Sorry, I don't have time nor energy to implement that
+	case Expression::Type::Invalid: return Expression::makeString(stringVal);
+	case Expression::Type::NestedExpression: return Expression::makeString("(...)");
+	case Expression::Type::Operator: {
+		const char *operStrs[] {
+			"**", "*", "/", "%",
+			"+", "-", ">>", "<<",
+			">", "<", ">=", "<=",
+			"==", "!=", "&", "^",
+			"|", "~", "&&", "||",
+			"!", "int", "float",
+			"string", "id"
+		};
+
+		return Expression::makeString(operVal < InvalidOper ? operStrs[operVal] : "<inv_oper>");
+	}
 	default: return {};
 	}
 }
@@ -598,5 +624,6 @@ const unordered_map<string, MathOperEnum> Expression::operStrToEnum{
 
 	{ "int", MakeInt },
 	{ "float", MakeFloat },
-	{ "string", MakeString }
+	{ "string", MakeString },
+	{ "id", MakeIdenitifier }
 };

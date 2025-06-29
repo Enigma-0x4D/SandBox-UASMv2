@@ -27,17 +27,18 @@ Result preprocessor(vector<Expression> &rScript_, vector<ProcessedFile> &rFileSt
 		
 		if (line.size() == 2 && line[1].type == Expression::Invalid && line[1].stringVal == ":") continue;
 
-		if (line[0].stringVal != "%define" && line[0].stringVal != "%undef")
-			rThisExpr.replaceMacros(macroMap); // [!] There may be an reallocation
-
-		if (line[0].stringVal.front() != '%') {
-			if (line[0].stringVal.front() != '_') return { UnexpectedToken, line[0].toString().stringVal };
-			else continue;
+		if (line[0].stringVal != "%define" && line[0].stringVal != "%undef") {
+			Result err = rThisExpr.replaceMacros(macroMap); // [!] Here a reallocation can occur!
+			if (err.code != NoError) return err;
+			if (line.empty()) continue;
 		}
 
 		const string &command = line[0].stringVal;
 
-		if (line.empty()) continue;
+		if (command.front() != '%') {
+			if (command.front() != '_') return { UnexpectedToken, command };
+			else continue;
+		}
 
 		if (command == "%define") { // %define ['global'] ['eval'] <macro> [value...]
 			result = defineMacro(line, globalMacros, rFileStack_.back().macros, macroMap);

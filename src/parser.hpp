@@ -113,7 +113,7 @@ bool strToNum(const string &str_, T &rVal_, size_t off_ = 0, bool allowPrefixes_
 	return 1;
 }
 
-enum MathOperEnum {
+enum MathOperEnum : unsigned int {
 	ToThePowerOf, // **
 	Times, DividedBy, Modulo, // * / %
 	Plus, Minus, // + -
@@ -127,7 +127,7 @@ enum MathOperEnum {
 	And, // &&
 	Or, // ||
 	Not, // !
-	MakeInt, MakeFloat, MakeString, // int float string
+	MakeInt, MakeFloat, MakeString, MakeIdenitifier, // int float string id
 
 	InvalidOper
 };

@@ -18,13 +18,24 @@ Result defineMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, Ma
 	if (macroName.type != Expression::Identifier) return { UnexpectedToken, macroName.toString().stringVal };
 
 	bool hasParams = line_[2 + offset].type == Expression::NestedExpression;
+	if (hasParams) {
+		for (auto &e : line_[2 + offset].expressions) // Arguments can be whatever we want, but parameters must be Identifiers
+			if (e.type != Expression::Identifier) {
+				hasParams = false;
+				break;
+			}
+	}
 	offset += hasParams;
 
 	Expression macro;
 	macro.type = Expression::NestedExpression;
 	macro.expressions.push_back({ vector<Expression>(line_.begin() + 2 + offset, line_.end()) });
-	if (hasParams) macro.expressions.push_back(line_[2 + offset].expressions);
-	if (evaluate) macro.replaceMacros(rMacroRefMap_);
+	if (hasParams) macro.expressions.push_back(line_[2 + offset - 1]);
+
+	if (evaluate) {
+		Result err = macro.replaceMacros(rMacroRefMap_);
+		if (err.code != NoError) return err;
+	}
 
 	(global ? rGlobalMacros_ : rLocalMacros_)[macroName.stringVal] = macro;
 	genFinalMacroMap(rMacroRefMap_, rLocalMacros_, rGlobalMacros_); // We generate a map of macros again, in case there was a reallocation
