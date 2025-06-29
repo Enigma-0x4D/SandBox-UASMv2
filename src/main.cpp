@@ -78,13 +78,11 @@ int main(int argc, char* argv[]) {
 
 	Result result = {};
 
-	{
-		ProcessedFile mainFile;
-		mainFile.location = args.args[1];
-		mainFile.line = 0;
-		fileStack.push_back(mainFile);
-	}
+	ProcessedFile mainFile;
+	mainFile.location = args.args[1];
+	mainFile.line = 0;
 
+	fileStack.push_back(mainFile);
 	result = preprocessor(tokScript, fileStack);
 	if (result.code != NoError) goto end;
 
@@ -95,6 +93,7 @@ int main(int argc, char* argv[]) {
 			%marker, %file_push & %file_pop directives (for debugging), and %define, and other things that we don't care about
 	*/
 
+	fileStack[0] = mainFile;
 	result = assembleCode(tokScript, code, markers, addMarkers, fileStack);
 	if (result.code != NoError) goto end;
 	

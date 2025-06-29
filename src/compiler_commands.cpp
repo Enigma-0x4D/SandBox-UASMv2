@@ -17,7 +17,7 @@ Result defineMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, Ma
 	const Expression &macroName = line_[1 + offset];
 	if (macroName.type != Expression::Identifier) return { UnexpectedToken, macroName.toString().stringVal };
 
-	bool hasParams = line_[2 + offset].type == Expression::NestedExpression;
+	bool hasParams = line_.size() > 2 + offset && line_[2 + offset].type == Expression::NestedExpression;
 	if (hasParams) {
 		for (auto &e : line_[2 + offset].expressions) // Arguments can be whatever we want, but parameters must be Identifiers
 			if (e.type != Expression::Identifier) {

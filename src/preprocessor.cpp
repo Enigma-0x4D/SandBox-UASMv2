@@ -69,7 +69,7 @@ Result preprocessor(vector<Expression> &rScript_, vector<ProcessedFile> &rFileSt
 			if (line.size() != 1)
 				return { InvalidArgumentCount, "0" };
 
-			if (!rFileStack_.empty()) {
+			if (rFileStack_.size() > 1) {
 				rFileStack_.pop_back();
 				genFinalMacroMap(macroMap, rFileStack_.back().macros, globalMacros);
 			}

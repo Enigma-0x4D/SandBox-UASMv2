@@ -109,12 +109,14 @@ static Result assembleInstruction(const InstructionTemplate &template_, const ve
 Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, vector<Marker> &rMarkers_, bool addMarkers_, vector<ProcessedFile> &rFileStack_) {
 	Result result = {};
 	
+	ProcessedFile mainFile = rFileStack_.front();
+
 	vector<InstructionTemplate> templs;
 
 	unordered_map<string, unsigned int> labels;
 
 	int processedBytes = 0;
-	for (int l = 0; l < rScript_.size(); l++) { // Get all label addresses (and templates bc why not)
+	for (int l = 0; l < rScript_.size(); l++, rFileStack_.back().line++) { // Get all label addresses (and templates bc why not)
 
 		vector<Expression> &line = rScript_[l].expressions;
 
@@ -130,7 +132,7 @@ Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, v
 				rFileStack_.push_back({ line[1].stringVal, -1 });
 			}
 			else if (command == "%file_pop") {
-				if (!rFileStack_.empty()) rFileStack_.pop_back();
+				if (rFileStack_.size() > 1) rFileStack_.pop_back();
 			}
 			else {
 				if (line.size() == 2 && line[1].type == Expression::Invalid && line[1].stringVal == ":") { // : is not an operator, so it will be Expression::Invalid. but it will work
@@ -158,12 +160,14 @@ Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, v
 		}
 	}
 
-	for (int l = 0, instIdx = 0; l < rScript_.size(); l++) {
+	rFileStack_.clear();
+	rFileStack_.push_back(mainFile);
+
+	for (int l = 0, instIdx = 0; l < rScript_.size(); l++, rFileStack_.back().line++) {
 
 		vector<Expression> &line = rScript_[l].expressions;
 
 		if (line.empty()) continue;
-
 
 		if (line[0].type == Expression::Identifier) {
 
@@ -174,7 +178,7 @@ Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, v
 				rFileStack_.push_back({ line[1].stringVal, -1 });
 			}
 			else if (command == "%file_pop") {
-				if (!rFileStack_.empty()) rFileStack_.pop_back();
+				if (rFileStack_.size() > 1) rFileStack_.pop_back();
 			}
 			else if (command == "%marker") {
 				if (line.size() != 2) return { InvalidArgumentCount, "1" };
