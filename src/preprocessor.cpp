@@ -18,21 +18,21 @@ Result preprocessor(vector<Expression> &rScript_, vector<ProcessedFile> &rFileSt
 
 	for (int l = 0; l < rScript_.size(); l++, rFileStack_.back().line++) {
 
-		Expression &rThisExpr = rScript_[l];
-		vector<Expression> &line = rThisExpr.expressions;
+		Expression &thisExpr = rScript_[l];
 		
-		if (line.empty()) continue;
+		if (thisExpr.expressions.empty()) continue;
 
-		if (line[0].type != Expression::Identifier) return { UnexpectedToken, line[0].toString().stringVal }; // There always should be an identifier at the beginning
+		if (thisExpr.expressions[0].type != Expression::Identifier) return { UnexpectedToken, thisExpr.expressions[0].toString().stringVal }; // There always should be an identifier at the beginning
 		
-		if (line.size() == 2 && line[1].type == Expression::Invalid && line[1].stringVal == ":") continue;
+		if (thisExpr.expressions.size() == 2 && thisExpr.expressions[1].type == Expression::Invalid && thisExpr.expressions[1].stringVal == ":") continue;
 
-		if (line[0].stringVal != "%define" && line[0].stringVal != "%undef") {
-			Result err = rThisExpr.replaceMacros(macroMap); // [!] Here a reallocation can occur!
+		if (thisExpr.expressions[0].stringVal != "%define" && thisExpr.expressions[0].stringVal != "%undef") {
+			Result err = thisExpr.replaceMacros(macroMap);
 			if (err.code != NoError) return err;
-			if (line.empty()) continue;
+			if (thisExpr.expressions.empty()) continue;
 		}
 
+		const vector<Expression> &line = thisExpr.expressions;
 		const string &command = line[0].stringVal;
 
 		if (command.front() != '%') {
