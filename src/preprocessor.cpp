@@ -24,7 +24,7 @@ Result preprocessor(vector<Expression> &rScript_, vector<ProcessedFile> &rFileSt
 
 		if (thisExpr.expressions[0].type != Expression::Identifier) return { UnexpectedToken, thisExpr.expressions[0].toString().stringVal }; // There always should be an identifier at the beginning
 		
-		if (thisExpr.expressions.size() == 2 && thisExpr.expressions[1].type == Expression::Invalid && thisExpr.expressions[1].stringVal == ":") continue;
+		if (thisExpr.expressions.size() > 1 && thisExpr.expressions.back().type == Expression::Invalid && thisExpr.expressions.back().stringVal == ":") continue;
 
 		if (thisExpr.expressions[0].stringVal != "%define" && thisExpr.expressions[0].stringVal != "%undef") {
 			Result err = thisExpr.replaceMacros(macroMap);

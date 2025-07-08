@@ -4,7 +4,7 @@
 // %define ['global'] ['eval'] <macro>[([<params>...])] [value...]
 Result defineMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, MacroMap &rLocalMacros_, MacroRefMap &rMacroRefMap_) {
 
-	if (line_.size() < 2) return { InvalidArgumentCount, "1 or more" }; // We don't count the command
+	if (line_.size() < 2) return { InvalidArgumentCount, "1 or more" };
 
 	size_t offset = 0;
 
@@ -38,7 +38,7 @@ Result defineMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, Ma
 	}
 
 	(global ? rGlobalMacros_ : rLocalMacros_)[macroName.stringVal] = macro;
-	genFinalMacroMap(rMacroRefMap_, rLocalMacros_, rGlobalMacros_); // We generate a map of macros again, in case there was a reallocation
+	genFinalMacroMap(rMacroRefMap_, rLocalMacros_, rGlobalMacros_); // Macro map is regenerated, in case there was a reallocation
 	// TODO // do this more efficiently
 
 	return {};
@@ -84,7 +84,7 @@ Result ifCondition(const vector<Expression> &line_, vector<Expression> &rScript_
 				return {};
 			}
 
-			rScript_[fileEndIdx].expressions.clear(); // We clear the lines since other modules don't process %if commands
+			rScript_[fileEndIdx].expressions.clear(); // Since other modules don't process %if commands the lines are removed.
 		}
 	}
 
@@ -111,7 +111,7 @@ Result includeFile(const vector<Expression> &line_, vector<Expression> &rScript_
 	string &pathStr = fileName.stringVal;
 	makePathWhole(pathStr, rFileStack_.back());
 
-	auto fileIt = rFiles_.find(pathStr); // We check if we have read this file before
+	auto fileIt = rFiles_.find(pathStr); // We check if this file has been read before.
 	if (fileIt == rFiles_.end()) {
 		fileIt = rFiles_.emplace(pathStr, vector<Expression>()).first;
 		if (!readFile(fileIt->second, pathStr)) // If not, we read it from the folder
@@ -134,7 +134,7 @@ Result includeFile(const vector<Expression> &line_, vector<Expression> &rScript_
 	return {};
 }
 
-// We define the contents of a file from the inside of another file. It makes libraries less messy.
+// Used for defining the contents of a file from inside another file. It makes libraries less messy.
 // %file_def <"['/']path/filename">
 Result defineFile(const vector<Expression> &line_, vector<Expression> &rScript_, int &rGlobalLineIdx_, vector<ProcessedFile> &rFileStack_, unordered_map<string, vector<Expression>> &rFiles_) {
 	if (line_.size() != 2) return { InvalidArgumentCount, "2" };
@@ -177,7 +177,7 @@ Result pushFile(const vector<Expression> &line_, vector<ProcessedFile> &rFileSta
 		newFile.macros["%arg" + numToStr(i - 2)] = Expression(vector<Expression>{ Expression(vector<Expression>{ line_[i] }) });
 	}
 		
-	newFile.macros["%argn"] = Expression(vector<Expression>{ Expression(vector<Expression>{ Expression((int)line_.size() - 2) }) }); // This looks wrong, but that's how we store macros
+	newFile.macros["%argn"] = Expression(vector<Expression>{ Expression(vector<Expression>{ Expression((int)line_.size() - 2) }) }); // This looks ugly, but that's how macros are stored
 	newFile.macros["%path"] = Expression(vector<Expression>{ Expression(vector<Expression>{ Expression::makeString(newFile.location.path) }) });
 	newFile.macros["%name"] = Expression(vector<Expression>{ Expression(vector<Expression>{ Expression::makeString(newFile.location.name) }) });
 

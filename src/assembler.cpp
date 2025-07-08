@@ -114,7 +114,7 @@ Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, v
 	vector<InstructionTemplate> templs;
 
 	unordered_map<string, unsigned int> labels;
-
+	
 	int processedBytes = 0;
 	for (int l = 0; l < rScript_.size(); l++, rFileStack_.back().line++) { // Get all label addresses (and templates bc why not)
 
@@ -122,9 +122,6 @@ Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, v
 
 		if (line.empty()) continue;
 		
-		for (int i = 1; i < line.size(); i++)
-			line[i].simplify();
-
 		if (line[0].type == Expression::Identifier) {
 
 			const string &command = line[0].stringVal;
@@ -149,6 +146,8 @@ Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, v
 				}
 				else if (line[0].stringVal.front() == '_') {
 
+					for (int i = 1; i < line.size(); i++) line[i].simplify();
+					
 					InstructionTemplate newInstTempl;
 					if (ErrorCode err = generateInstructionTemplate(line[0].stringVal, newInstTempl))
 						return { err, line[0].stringVal };
@@ -189,8 +188,9 @@ Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, v
 					replaceLabels(rScript_[l], labels);
 
 					for (int i = 1; i < line.size(); i++) {
-						line[i].simplify(); // <-- we don't check the result because registers can't be simplified
-						if (line[i].type == Expression::NestedExpression) return { UnexpectedToken, line[i].toString().stringVal };
+						line[i].simplify(); // <-- the result isn't checked because registers can't be simplified, and simplify() returns 0 when it encounters one.
+						if (line[i].type != Expression::Identifier && line[i].type != Expression::Integer)
+							return { UnexpectedToken, line[i].toString().stringVal };
 					}
 
 					InstructionBytes newInst;

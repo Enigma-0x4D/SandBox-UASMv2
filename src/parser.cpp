@@ -153,7 +153,7 @@ bool Expression::parse(const char *begin_, const char *end_) {
 		type = Expression::Type::NestedExpression;
 		Expression expr = Expression(str.data() + 1, str.data() + str.size() - 1);
 		
-		if (expr.type == Invalid && expr.stringVal.empty()) return 1; // for cases like () or (   )
+		if (expr.type == Expression::Type::Invalid && expr.stringVal.empty()) return 1; // for cases like () or (   )
 		
 		if (expr.type == NestedExpression) *this = expr;
 		else expressions.push_back(expr);
@@ -213,11 +213,11 @@ bool Expression::parse(const char *begin_, const char *end_) {
 	}
 }
 
-void Expression::replaceMacroArguments(const MacroRefMap &argMap_) { // Here we store just the name and value of the parameter. No additional data like in normal macros
+void Expression::replaceMacroArguments(const MacroRefMap &argMap_) { // Only the name and value of the parameter are stored, without additional data like in normal macros.
 	// It will not be possible to do things like:
 	//	%define macro(a b) a * b
 	//	macro(x (y + z)) -> x * y + z
-	// but I doubt anyone will notice let alone use this, so i'll leave it like this
+	// but I doubt anyone will notice, let alone use this, so i'll leave it like this
 
 	if (type == NestedExpression) {
 		for (int e = 0; e < expressions.size(); e++)
@@ -254,7 +254,7 @@ Result Expression::replaceMacros(const MacroRefMap &macroMap_) {
 						if (err.code != NoError) return err;
 					}
 
-					// Since we read the tokens from the end of the line, the macros in arguments will already be replaced
+					// Since the tokens are read from the end of the line, the macros in arguments will already be replaced.
 
 					if (expectedArgNum != 0) {
 						if (e == expressions.size() - 1 || expressions[e + 1].expressions.size() != expectedArgNum) {
@@ -289,8 +289,8 @@ Result Expression::replaceMacros(const MacroRefMap &macroMap_) {
 	return NoError;
 }
 
-//	!! We don't replace macros in this function !!
-//			  It should be done before
+//	!! Macros are not replaced in this function !!
+//		     It should be done before
 
 bool Expression::simplify(bool keepOperationOrder_) {
 	if (type == Invalid || type == Identifier) return false;
@@ -302,6 +302,9 @@ bool Expression::simplify(bool keepOperationOrder_) {
 			*this = Expression(expressions[0]);
 			return simplify(keepOperationOrder_);
 		}
+
+		for (auto &e : expressions) // First, try to simplify everything that can be easily simplified
+			 e.simplify(keepOperationOrder_);
 
 		for (int e = expressions.size() - 2; e >= 0; e--) {
 			if (expressions[e].type == Operator) {
@@ -323,14 +326,14 @@ bool Expression::simplify(bool keepOperationOrder_) {
 
 				case MakeIdenitifier:
 					if (expressions[e + 1].type != String && expressions[e + 1].type != Identifier /* why not? */) {
-						*this = {};
+						*this = toInvalid();
 						return false;
 					}
 					expressions[e + 1].type = Identifier;
 					expressions.erase(expressions.begin() + e);
 					break;
 
-				case Not: // ! will work on anything, so we put it before -
+				case Not: // ! will work on anything, so it's processed before -
 					expressions[e + 1] = !expressions[e + 1].toBool().intVal;
 					expressions.erase(expressions.begin() + e);
 					break;
@@ -348,7 +351,7 @@ bool Expression::simplify(bool keepOperationOrder_) {
 			canBeSimplified &= e.simplify(keepOperationOrder_);
 
 			if (e.type == Invalid) {
-				*this = {};
+				*this = toInvalid();
 				return false;
 			}
 		}
@@ -360,7 +363,7 @@ bool Expression::simplify(bool keepOperationOrder_) {
 				switch (expressions[e].operVal) {
 				case BinNot:
 					if (expressions[e + 1].type != Integer) {
-						*this = {};
+						*this = toInvalid();
 						return false;
 					}
 					expressions[e + 1] = Expression(~expressions[e + 1].intVal);
@@ -375,13 +378,13 @@ bool Expression::simplify(bool keepOperationOrder_) {
 						expressions[e + 1].floatVal = -expressions[e + 1].floatVal;
 						break;
 					default:
-						*this = {};
+						*this = toInvalid();
 						return false;
 					}
 					break;
 
 				default: // All other 1-operand operators were removed ealier
-					*this = {};
+					*this = toInvalid();
 					return false;
 				}
 
@@ -397,14 +400,14 @@ bool Expression::simplify(bool keepOperationOrder_) {
 		// VVV We are left with an insimplifable list of floats, ints and opers, ... and other things, ... but we can do operation on all of them, so it's fine VVV
 
 		if ((expressions.size() & 1) == 0) { // A x B x C ... D   -> size() is odd
-			*this = {}; // Since we're left with a list of numbers that cannot be simplified, the expression is invalid.
+			*this = toInvalid(); // Since we're left with a list of numbers that cannot be simplified, this expression is invalid.
 			return false;
 		}
 
 		for (int e = 0; e < expressions.size(); e++) {
 			if ((e % 2 == 0 && expressions[e].type == Operator) ||
 				(e % 2 == 1 && (expressions[e].type == Integer || expressions[e].type == Float || expressions[e].type == String))) {
-				*this = {}; // Same as above
+				*this = toInvalid(); // Same as above
 				return false;
 			}
 		}
@@ -452,7 +455,7 @@ Expression Expression::toString(bool removeTrailingZeros_) const {
 
 		return Expression::makeString(operVal < InvalidOper ? operStrs[operVal] : "<inv_oper>");
 	}
-	default: return {};
+	default: return toInvalid();
 	}
 }
 
@@ -462,10 +465,10 @@ Expression Expression::toFloat() const {
 	case Expression::Type::Float: return *this;
 	case Expression::Type::String: {
 		float val;
-		if (!strToNum(stringVal, val)) return {};
+		if (!strToNum(stringVal, val)) return toInvalid();
 		return val;
 	}
-	default: return {};
+	default: return toInvalid();
 	}
 }
 
@@ -475,10 +478,10 @@ Expression Expression::toInt() const {
 	case Expression::Type::Float: return (int)floatVal;
 	case Expression::Type::String: {
 		int val;
-		if (!strToNum(stringVal, val)) return {};
+		if (!strToNum(stringVal, val)) return toInvalid();
 		return val;
 	}
-	default: return {};
+	default: return toInvalid();
 	}
 }
 
@@ -493,8 +496,14 @@ Expression Expression::toBool() const {
 	case Expression::Type::Identifier: return false; // This will be useful for checking if a macro is defined.
 	case Expression::Type::String: return true; // why not?
 	case Expression::Type::Invalid:
-	case Expression::Type::Operator: return {};
+	case Expression::Type::Operator: return toInvalid();
 	}
+}
+
+Expression Expression::toInvalid() const {
+	Expression result = toString();
+	result.type = Expression::Type::Invalid;
+	return result;
 }
 
 Expression Expression::operation(const Expression &a_, MathOperEnum oper_, const Expression &b_) {

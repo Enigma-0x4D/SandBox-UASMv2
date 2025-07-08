@@ -247,6 +247,7 @@ public:
 	Expression toFloat() const;
 	Expression toInt() const;
 	Expression toBool() const;
+	Expression toInvalid() const;
 	
 	bool isValid() const {
 		if (type == NestedExpression) {

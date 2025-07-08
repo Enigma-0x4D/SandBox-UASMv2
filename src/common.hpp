@@ -39,8 +39,6 @@ inline bool isBin(char c) {
 	return c == '0' || c == '1';
 }
 
-enum BytePart : bool { Low, High };
-
 enum ErrorCode {
 	NoError,
 	InvalidInstruction,

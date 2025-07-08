@@ -12,7 +12,7 @@ The `\` symbol can be used to connect multiple lines in the script.
 
 The compiler supports mathematical expressions.\
 Supported operators include `+`, `-`, `*`, `/`, `**`, `==`, `!=`, `>`, `<`, `>=`, `<=`, `||`, `&&`, `|`, `&`, `^`, `~`, `!` and grouping with `()`.\
-`int`, `float`, `string` and `id` operators can be used to convert expressions between different types.\
+`int`, `float`, `string` and `id` operators can be used to convert expressions between different types.
 
 
 ## Compiler commands
