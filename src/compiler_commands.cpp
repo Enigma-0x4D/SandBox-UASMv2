@@ -14,7 +14,8 @@ Result defineMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, Ma
 	bool evaluate = line_[1 + offset].type == Expression::Identifier && line_[1 + offset].stringVal == "eval";
 	offset += evaluate;
 
-	const Expression &macroName = line_[1 + offset];
+	Expression macroName = line_[1 + offset];
+	macroName.simplify();
 	if (macroName.type != Expression::Identifier) return { UnexpectedToken, macroName.toString().stringVal };
 
 	bool hasParams = line_.size() > 2 + offset && line_[2 + offset].type == Expression::NestedExpression;
@@ -55,7 +56,11 @@ Result undefMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, Mac
 	if (global && line_.size() != 2)
 		return { InvalidArgumentCount, "1 or 2" };
 
-	(global ? rGlobalMacros_ : rLocalMacros_).erase(line_[1 + global].stringVal);
+	Expression macroName = line_[1 + global];
+	macroName.simplify();
+	if (macroName.type != Expression::Identifier) return { UnexpectedToken, macroName.toString().stringVal };
+
+	(global ? rGlobalMacros_ : rLocalMacros_).erase(macroName.stringVal);
 	
 	genFinalMacroMap(rMacroRefMap_, rLocalMacros_, rGlobalMacros_);
 
