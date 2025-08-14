@@ -22,14 +22,24 @@ Result preprocessor(vector<Expression> &rScript_, vector<ProcessedFile> &rFileSt
 		
 		if (thisExpr.expressions.empty()) continue;
 
-		if (thisExpr.expressions[0].type != Expression::Identifier) return { UnexpectedToken, thisExpr.expressions[0].toString().stringVal }; // There always should be an identifier at the beginning
-		
-		if (thisExpr.expressions.size() > 1 && thisExpr.expressions.back().type == Expression::Invalid && thisExpr.expressions.back().stringVal == ":") continue;
+		thisExpr.expressions[0].simplify();
 
+		if (thisExpr.expressions[0].type == Expression::String && thisExpr.expressions.size() == 1) continue; // String inserted directly - skip everything else
+
+		if (thisExpr.expressions[0].type != Expression::Identifier) return { UnexpectedToken, thisExpr.expressions[0].toString().stringVal };
+		
 		if (thisExpr.expressions[0].stringVal != "%define" && thisExpr.expressions[0].stringVal != "%undef") {
 			Result err = thisExpr.replaceMacros(macroMap);
 			if (err.code != NoError) return err;
 			if (thisExpr.expressions.empty()) continue;
+		}
+
+		for (int e = 1; e < thisExpr.expressions.size(); e++)
+			thisExpr.expressions[e].simplify();
+
+		if (thisExpr.expressions.size() == 2 && thisExpr.expressions[1].type == Expression::Invalid && thisExpr.expressions.back().stringVal == ":") {
+			flattenNestedExpr(thisExpr.expressions[0]);
+			continue;
 		}
 
 		const vector<Expression> &line = thisExpr.expressions;
@@ -74,8 +84,17 @@ Result preprocessor(vector<Expression> &rScript_, vector<ProcessedFile> &rFileSt
 				genFinalMacroMap(macroMap, rFileStack_.back().macros, globalMacros);
 			}
 		}
+		else if (command == "%inherit") { // %inherit <'all'/macros...>
+			result = inheritMacros(line, rFileStack_, globalMacros, macroMap);
+		}
 		else if (command == "%marker") { // %marker <text>
 			// To prevent UnknownInstruction error
+		}
+		else if (command == "%skip_to") { // %skip_to <byte>
+			
+		}
+		else if (command == "%align") { // %align <num_of_bytes>
+
 		}
 		else if (command == "%error") { // %error [code] <text>
 			result = errorDirective(line);

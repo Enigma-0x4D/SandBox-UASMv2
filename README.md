@@ -4,7 +4,7 @@ Improved universal program assembler for Sand:Box CPUs
 
 ## Syntax
 
-Each line should start with an instruction template or a compiler command.
+Each line should start with an instruction template, a compiler command or a string.
  
 The `\` symbol can be used to connect multiple lines in the script.
 
@@ -19,11 +19,12 @@ Supported operators include `+`, `-`, `*`, `/`, `**`, `==`, `!=`, `>`, `<`, `>=`
 
 Compiler commands can be used to control the compilation process and manage different aspects of code assembly.
 
-- `%define ['global'] ['eval'] <macro> [value...]`\
+- `%define ['global'] ['eval'] <macro>[(params...)] <value...>`\
   Defines a macro.\
   Macro can be defined as global using the `global` keyword.\
   Local macros are automatically undefined when exiting the file's scope, while global macros persist until explicitly undefined.\
-  The `eval` keyword can be used to evaluate all macros used in the new macro's value.
+  The `eval` keyword can be used to evaluate all macros used in the new macro's value.\
+  Macros work similarly to those in languages such as C or C++.
 
 - `%undef ['global'] <macro>`\
   Undefines the specified macro.\
@@ -42,15 +43,30 @@ Compiler commands can be used to control the compilation process and manage diff
 - `%marker <text>`\
   Adds a marker to the compiled code, which can help with debugging and identyfying the locations of selected code fragments.
 
+- `%skip_to <byte>`\
+  Sets the address of the next instruction and fills the skipped bytes with `0x00`.
+
+- `%align <num of bytes>`\
+  Adds empty bytes so that the address of the next instruction is a multiple of the specified number.
+
+- `%inherit <'all'/macros...>`\
+  Copies local macros from the previous file to the current one.
+
 - `%error [code] <description>`\
   Generates an error with the specified code.\
   This command can be used to trigger errors for debugging purposes.
 
+- `%file_def <name>`\
+  Marks the start of a new file definition. Can be used with %file_end to create files that can later be included with `%include` command. This allows multiple smaller files to be stored within a larger file for better code organization.
+
+- `%file_end`\
+  Marks the end of a file.
+
 - `%file_push <path> [args...]`\
   Pushes a new file onto the stack for processing. The file's path and optional parameters can be provided. Each file push isolates macros and other settings within its scope.\
-  **However, it's important to remember that manually managing the file stack can lead to many potential errors, and it is strongly recommended to use `%include` command instead.**
+  **However, it's important to remember that manually managing the file stack can lead to many potential errors and it is strongly recommended to use the `%include` command instead.**
 
-- `%file_pop`
+- `%file_pop`\
   Pops the most recently pushed file off the stack.
 
 
@@ -77,3 +93,19 @@ Here are some examples:
 
 `_2i4 0b11111`\
   Returns `InvalidRange` error.
+
+
+## Strings
+Strings of characters get converted directly into bytes in the program memory:
+
+`"Hello"`\
+  Compiles to `48 65 6C 6C 6F`.
+
+Strings are not null-terminated. In order to include the null character, it needs to be added separately:\
+  ```
+  "Hello"
+  _1n8
+  ```
+
+Some CPUs might require adding the `%align <instruction size>` command after the string definition to ensure that the address of the next instruction is valid.
+

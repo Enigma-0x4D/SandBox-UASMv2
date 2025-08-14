@@ -257,18 +257,18 @@ Result Expression::replaceMacros(const MacroRefMap &macroMap_) {
 					// Since the tokens are read from the end of the line, the macros in arguments will already be replaced.
 
 					if (expectedArgNum != 0) {
-						if (e == expressions.size() - 1 || expressions[e + 1].expressions.size() != expectedArgNum) {
+						if (e == expressions.size() - 1 || (expressions[e + 1].expressions.size() != expectedArgNum && !(expectedArgNum == 1 && expressions[e + 1].type != NestedExpression))) {
 							return { InvalidArgumentCount, numToStr(expectedArgNum) };
 						}
-
-						if (expressions[e + 1].type != NestedExpression) {
-							return { UnexpectedToken, expressions[e + 1].toString().stringVal };
-						}
-					
+											
 						const Expression &paramNames = macro.expressions[1];
 
 						MacroRefMap argMacros;
-						for (int a = 0; a < expectedArgNum; a++) {
+						
+						if (expectedArgNum == 1 && expressions[e + 1].type != NestedExpression) {
+							argMacros[paramNames.expressions[0].stringVal] = &expressions[e + 1];
+						}
+						else for (int a = 0; a < expectedArgNum; a++) {
 							argMacros[paramNames.expressions[a].stringVal] = &expressions[e + 1].expressions[a];
 						}
 
@@ -297,15 +297,25 @@ bool Expression::simplify(bool keepOperationOrder_) {
 
 	if (type == NestedExpression) {
 		if (expressions.empty()) return false;
-
+				
 		if (expressions.size() == 1) {
-			*this = Expression(expressions[0]);
-			return simplify(keepOperationOrder_);
+			if (expressions[0].simplify(keepOperationOrder_)) {
+				*this = Expression(expressions[0]);
+				return true;
+			}
+			else {
+				return false;
+			}
+
+			// This is needed for parameter definition in macros   --->      %define macro(arg) val    !=    %define macro arg val
 		}
 
-		for (auto &e : expressions) // First, try to simplify everything that can be easily simplified
-			 e.simplify(keepOperationOrder_);
+		bool allSimplified = true;
+		for (auto &e : expressions)
+			allSimplified &= e.simplify(keepOperationOrder_);
+		if (!allSimplified) return false;
 
+		bool containsIdentifiers = false;
 		for (int e = expressions.size() - 2; e >= 0; e--) {
 			if (expressions[e].type == Operator) {
 				switch (expressions[e].operVal) {
@@ -325,12 +335,17 @@ bool Expression::simplify(bool keepOperationOrder_) {
 					break;
 
 				case MakeIdenitifier:
-					if (expressions[e + 1].type != String && expressions[e + 1].type != Identifier /* why not? */) {
+					if (expressions[e + 1].type != String) { // Expression::Identifier is not included because all identifiers should eventually be replaced.
 						*this = toInvalid();
 						return false;
 					}
 					expressions[e + 1].type = Identifier;
 					expressions.erase(expressions.begin() + e);
+
+					containsIdentifiers = true;
+
+					do e--; while (e >= 0 && expressions[e].type == Operator);
+
 					break;
 
 				case Not: // ! will work on anything, so it's processed before -
@@ -341,22 +356,13 @@ bool Expression::simplify(bool keepOperationOrder_) {
 			}
 		}
 
+		if (containsIdentifiers)
+			return false;
+
 		if (expressions.size() == 1) {
 			*this = Expression(expressions[0]);
-			return simplify(keepOperationOrder_);
+			return true;
 		}
-
-		bool canBeSimplified = true;
-		for (auto &e : expressions) {
-			canBeSimplified &= e.simplify(keepOperationOrder_);
-
-			if (e.type == Invalid) {
-				*this = toInvalid();
-				return false;
-			}
-		}
-
-		if (!canBeSimplified) return false;
 
 		for (int e = expressions.size() - 2; e >= 0; e--) {
 			if (expressions[e].type == Operator && (e == 0 || expressions[e - 1].type == Operator)) {
@@ -394,20 +400,18 @@ bool Expression::simplify(bool keepOperationOrder_) {
 
 		if (expressions.size() == 1) {
 			*this = Expression(expressions[0]);
-			return simplify(keepOperationOrder_);
+			return true;
 		}
 
 		// VVV We are left with an insimplifable list of floats, ints and opers, ... and other things, ... but we can do operation on all of them, so it's fine VVV
 
-		if ((expressions.size() & 1) == 0) { // A x B x C ... D   -> size() is odd
-			*this = toInvalid(); // Since we're left with a list of numbers that cannot be simplified, this expression is invalid.
+		if ((expressions.size() & 1) == 0) { // A x B x C ... D   -> size() should odd
 			return false;
 		}
 
 		for (int e = 0; e < expressions.size(); e++) {
 			if ((e % 2 == 0 && expressions[e].type == Operator) ||
 				(e % 2 == 1 && (expressions[e].type == Integer || expressions[e].type == Float || expressions[e].type == String))) {
-				*this = toInvalid(); // Same as above
 				return false;
 			}
 		}
@@ -485,15 +489,22 @@ Expression Expression::toInt() const {
 	}
 }
 
+static inline void removeIdentifiers(Expression &rExpr_) {
+	if (rExpr_.type == Expression::Type::Identifier) rExpr_ = Expression(false); // All undefined macros and other things will be evaluated to 0.
+	if (rExpr_.type == Expression::Type::NestedExpression)
+		for (auto &e : rExpr_.expressions) removeIdentifiers(e);
+}
+
 Expression Expression::toBool() const {
 	Expression result = *this;
+	removeIdentifiers(result);
+
 	result.simplify();
 
 	switch (result.type) {
 	case Expression::Type::Float: return result.floatVal != 0.f;
 	case Expression::Type::Integer: return result.intVal != 0;
 	case Expression::Type::NestedExpression: // <-- Should be evaluated ealier. If it didn't, it means it contains an identifier.
-	case Expression::Type::Identifier: return false; // This will be useful for checking if a macro is defined.
 	case Expression::Type::String: return true; // why not?
 	case Expression::Type::Invalid:
 	case Expression::Type::Operator: return toInvalid();

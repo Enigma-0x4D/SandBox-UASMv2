@@ -1,10 +1,10 @@
 #include "compiler_commands.hpp"
 
 
-// %define ['global'] ['eval'] <macro>[([<params>...])] [value...]
+// %define ['global'] ['eval'] <macro>[([<params>...])] <value...>
 Result defineMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, MacroMap &rLocalMacros_, MacroRefMap &rMacroRefMap_) {
 
-	if (line_.size() < 2) return { InvalidArgumentCount, "1 or more" };
+	if (line_.size() < 3) return { InvalidArgumentCount, "2 or more" };
 
 	size_t offset = 0;
 
@@ -15,7 +15,11 @@ Result defineMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, Ma
 	offset += evaluate;
 
 	Expression macroName = line_[1 + offset];
-	macroName.simplify();
+	
+	flattenNestedExpr(macroName);
+	// For cases like   (id "macroName")  --->  (macroName)
+	// Identifiers in brackets are not simplified by the simplify() function
+
 	if (macroName.type != Expression::Identifier) return { UnexpectedToken, macroName.toString().stringVal };
 
 	bool hasParams = line_.size() > 2 + offset && line_[2 + offset].type == Expression::NestedExpression;
@@ -34,8 +38,9 @@ Result defineMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, Ma
 	if (hasParams) macro.expressions.push_back(line_[2 + offset - 1]);
 
 	if (evaluate) {
-		Result err = macro.replaceMacros(rMacroRefMap_);
+		Result err = macro.expressions[0].replaceMacros(rMacroRefMap_);
 		if (err.code != NoError) return err;
+		for (auto &e : macro.expressions[0].expressions) e.simplify();
 	}
 
 	(global ? rGlobalMacros_ : rLocalMacros_)[macroName.stringVal] = macro;
@@ -57,7 +62,9 @@ Result undefMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, Mac
 		return { InvalidArgumentCount, "1 or 2" };
 
 	Expression macroName = line_[1 + global];
-	macroName.simplify();
+
+	flattenNestedExpr(macroName);
+
 	if (macroName.type != Expression::Identifier) return { UnexpectedToken, macroName.toString().stringVal };
 
 	(global ? rGlobalMacros_ : rLocalMacros_).erase(macroName.stringVal);
@@ -188,6 +195,39 @@ Result pushFile(const vector<Expression> &line_, vector<ProcessedFile> &rFileSta
 
 	rFileStack_.back().line--;
 	rFileStack_.push_back(newFile);
+
+	genFinalMacroMap(rMacroMap_, rFileStack_.back().macros, globalMacros_);
+
+	return {};
+}
+
+// %inherit <'all'/macros...>
+Result inheritMacros(const vector<Expression> &line_, vector<ProcessedFile> &rFileStack_, const MacroMap &globalMacros_, MacroRefMap &rMacroMap_) {
+	if (line_.size() < 2) {
+		return { InvalidArgumentCount, "1 or more" };
+	}
+
+	if (rFileStack_.size() == 1) return { UnexpectedToken, line_[0].toString().stringVal };
+
+	const MacroMap &other = rFileStack_[rFileStack_.size() - 2].macros;
+
+	if (line_[1].type == Expression::Identifier && line_[1].stringVal == "all") {
+		if (line_.size() > 2) return { UnexpectedToken, line_[2].toString().stringVal };
+
+		for (auto &[k, v] : other)
+			rFileStack_.back().macros[k] = v;
+		
+		return {};
+	}
+
+	for (int i = 1; i < line_.size(); i++) {
+		if (line_[i].type != Expression::Identifier) return { UnexpectedToken, line_[i].toString().stringVal };
+
+		auto it = other.find(line_[i].stringVal);
+		if (it == other.end()) return { UnexpectedToken, line_[i].toString().stringVal };
+
+		rFileStack_.back().macros[it->first] = it->second;
+	}
 
 	genFinalMacroMap(rMacroMap_, rFileStack_.back().macros, globalMacros_);
 

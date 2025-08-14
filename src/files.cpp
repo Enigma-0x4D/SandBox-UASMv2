@@ -32,7 +32,7 @@ bool saveCode(const vector<Instruction> &code_, const string &fileName_, size_t 
 
 	for (size_t i = 0; i < code_.size(); i++) {
 
-		constexpr char num4b[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+		constexpr char hexDigits[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 		if (lastMarkerIdx != markers_.size() && i == markers_[lastMarkerIdx].pos) {
 			string str = "<" + markers_[lastMarkerIdx].str + "> ";
@@ -40,11 +40,11 @@ bool saveCode(const vector<Instruction> &code_, const string &fileName_, size_t 
 			lastMarkerIdx++;
 		}
 
-		InstructionBytes inst = code_[i].bytes;
+		InstructionBytes inst = code_[i].bytes << (((int)sizeof(code_[i].bytes) - code_[i].byteNum) * 8);
 		for (int j = 0; j < code_[i].byteNum; j++) {
-			outStr.push_back(num4b[inst >> (sizeof(inst) * 8 - 4)]);
+			outStr.push_back(hexDigits[inst >> (sizeof(inst) * 8 - 4)]);
 			inst <<= 4;
-			outStr.push_back(num4b[inst >> (sizeof(inst) * 8 - 4)]);
+			outStr.push_back(hexDigits[inst >> (sizeof(inst) * 8 - 4)]);
 			inst <<= 4;
 
 			byteNum++;

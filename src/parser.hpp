@@ -289,4 +289,9 @@ void tokenizeScript(vector<string> &rScript_, vector<Expression> &rTokens_);
 
 void genFinalMacroMap(MacroRefMap &rMacroMap_, const MacroMap &local_, const MacroMap &global_);
 
+inline void flattenNestedExpr(Expression &rExpr_) {
+	while (rExpr_.type == Expression::NestedExpression && rExpr_.expressions.size() == 1)
+		rExpr_ = Expression(rExpr_.expressions[0]);
+}
+
 #endif

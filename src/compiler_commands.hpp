@@ -11,6 +11,7 @@ Result ifCondition(const vector<Expression> &line_, vector<Expression> &rScript_
 Result includeFile(const vector<Expression> &line_, vector<Expression> &rScript_, int &rGlobalLineIdx_, vector<ProcessedFile> &rFileStack_, unordered_map<string, vector<Expression>> &rFiles_);
 Result defineFile(const vector<Expression> &line_, vector<Expression> &rScript_, int &rGlobalLineIdx_, vector<ProcessedFile> &rFileStack_, unordered_map<string, vector<Expression>> &rFiles_);
 Result pushFile(const vector<Expression> &line_, vector<ProcessedFile> &rFileStack_, const MacroMap &globalMacros_, MacroRefMap &rMacroMap_);
+Result inheritMacros(const vector<Expression> &line_, vector<ProcessedFile> &rFileStack_, const MacroMap &globalMacros_, MacroRefMap &rMacroMap_);
 Result errorDirective(const vector<Expression> &line_);
 
 #endif

@@ -1,0 +1,289 @@
+%if (!lta15p_utils_lib_def)
+%define global lta15p_utils_lib_def 1
+
+%define global func_def_(name) %define global eval (id name) %include ("/" + %path + name)
+
+%define global STACK_REGS 8
+%define global CALL_OFFSET (STACK_REGS + 2)
+
+%define global low(x) (x & 0xff)
+%define global high(x) ((x >> 8) & 0xff)
+
+%define global true 1
+%define global false 0
+
+
+%if (!core_included)
+	%error "Core library not included!"
+%endif
+
+
+%define global next_label_idx 0
+
+func_def_("make_unique_label")
+%file_def "make_unique_label"
+	%if (%argn != 0)
+		%error err_invalid_argument_count "0"
+	%endif
+	
+	%define global eval unique_label (id ("unique_label" + next_label_idx))
+	%define global eval next_label_idx (next_label_idx + 1)
+%file_end
+
+
+
+func_def_("lda")
+%file_def "lda" // <dest> <addr>
+	%if (%argn != 2)
+		%error err_invalid_argument_count "2"
+	%endif
+	
+	ldi ST5 low(%arg1)
+	ldi ST7 high(%arg1)
+	ld %arg0 ST5 ST7
+
+%file_end
+
+func_def_("sta")
+%file_def "sta" // <dest> <addr>
+	%if (%argn != 2)
+		%error err_invalid_argument_count "2"
+	%endif
+	
+	ldi ST5 low(%arg1)
+	ldi ST7 high(%arg1)
+	st %arg0 ST5 ST7
+
+%file_end
+
+func_def_("stc")
+%file_def "stc" // <val> <addr>
+	%if (%argn != 2)
+		%error err_invalid_argument_count "2"
+	%endif
+	
+	ldi ST3 %arg0
+	ldi ST5 low(%arg1)
+	ldi ST7 high(%arg1)
+	st ST3 ST5 ST7
+
+%file_end
+
+func_def_("nz")
+%file_def "nz" // <dest> <a>
+	%if (%argn != 2)
+		%error err_invalid_argument_count "2"
+	%endif
+
+	div %arg0 %arg1 %arg1
+
+%file_end
+
+func_def_("nand")
+%file_def "nand" // <dest> <a> <b>
+	%if (%argn != 3)
+		%error err_invalid_argument_count "3"
+	%endif
+
+	and %arg0 %arg1 %arg2
+	mov %arg0 CR
+
+%file_end
+
+func_def_("xnor")
+%file_def "xnor" // <dest> <a> <b>
+	%if (%argn != 3)
+		%error err_invalid_argument_count "3"
+	%endif
+
+	nor %arg0 %arg1 %arg2
+	mov %arg0 CR
+
+%file_end
+
+func_def_("xor")
+%file_def "xor" // <dest> <a> <b>
+	%if (%argn != 3)
+		%error err_invalid_argument_count "3"
+	%endif
+
+	or %arg0 %arg1 %arg2
+	mov %arg0 CR
+
+%file_end
+
+func_def_("neq")
+%file_def "neq" // <dest> <a> <b>
+	%if (%argn != 3)
+		%error err_invalid_argument_count "3"
+	%endif
+
+	or %arg0 %arg1 %arg2
+	nz %arg0 CR
+
+%file_end
+
+func_def_("jnz")
+%file_def "jnz" // jnz <label> <cond>
+	%if (%argn != 2)
+		%error err_invalid_argument_count "2"
+	%endif
+
+	ldi ST7 (%arg0 & 0xff)
+	ldi ST5 ((%arg0 >> 8) & 0xff)
+	jmp %arg1 ST7 ST5
+
+%file_end
+
+func_def_("jz")
+%file_def "jz" // jnz <label> <cond>
+	%if (%argn != 2)
+		%error err_invalid_argument_count "2"
+	%endif
+	
+	sub ST3 %arg1 %arg1
+	ldi ST3 comp_zf
+	and ST3 CR ST3
+	
+	jnz %arg0 ST3
+
+%file_end
+
+func_def_("jneq")
+%file_def "jneq" // jneq <label> <a> <b>
+	%if (%argn != 3)
+		%error err_invalid_argument_count "3"
+	%endif
+	
+	sub ST3 %arg1 %arg2
+	ldi ST3 comp_neq
+	and ST3 CR ST3
+	
+	jnz %arg0 ST3
+
+%file_end
+
+func_def_("jneqi")
+%file_def "jneqi" // jneq <label> <a> <b>
+	%if (%argn != 3)
+		%error err_invalid_argument_count "3"
+	%endif
+	
+	ldi ST3 %arg2
+	jneq %arg0 %arg1 ST3
+
+%file_end
+
+func_def_("jeq")
+%file_def "jeq" // jneq <label> <a> <b>
+	%if (%argn != 3)
+		%error err_invalid_argument_count "3"
+	%endif
+	
+	sub ST3 %arg1 %arg2
+	ldi ST3 comp_eql
+	and ST3 CR ST3
+	
+	jnz %arg0 ST3
+
+%file_end
+
+func_def_("jeqi")
+%file_def "jeqi" // jneq <label> <a> <b>
+	%if (%argn != 3)
+		%error err_invalid_argument_count "3"
+	%endif
+	
+	ldi ST3 %arg2
+	jeq %arg0 %arg1 ST3
+
+%file_end
+
+%define global CALL_next_label_idx 0
+
+func_def_("call")
+%file_def "call" // call <label>
+	%if (%argn != 1)
+		%error err_invalid_argument_count "1"
+	%endif
+	
+	%define global eval CALL_next_label_idx (CALL_next_label_idx + 1)
+	%define eval return_label (id ("unique_label" + CALL_next_label_idx))
+	
+	psh 2
+	ldi R6 (return_label & 0xff)
+	ldi R7 ((return_label >> 8) & 0xff)
+	psh STACK_REGS
+	
+	ldi CR 1
+	jnz %arg0 CR
+	
+	return_label:
+	
+%file_end
+
+func_def_("callr")
+%file_def "callr" // callr <label> <ret_label>
+	%if (%argn != 2)
+		%error err_invalid_argument_count "2"
+	%endif
+	
+	psh 2
+	ldi R6 (%arg1 & 0xff)
+	ldi R7 ((%arg1 >> 8) & 0xff)
+	psh STACK_REGS
+	
+	ldi CR 1
+	jnz %arg0 CR
+	
+%file_end
+
+func_def_("inc16")
+%file_def "inc16" // <low> <high> <b>
+	%if (%argn != 3)
+		%error err_invalid_argument_count "3"
+	%endif
+	
+	add %arg0 %arg0 %arg2
+	add %arg1 %arg1 CR
+	
+%file_end
+
+func_def_("bshr")
+%file_def "bshr" // oper <dest> <a> <b>
+	%if (%argn != 3)
+		%error err_invalid_argument_count "3"
+	%endif
+	
+	bsh %arg0 %arg1 %arg2
+%file_end
+
+func_def_("bshl")
+%file_def "bshl" // oper <dest> <a> <b>
+	%if (%argn != 3)
+		%error err_invalid_argument_count "3"
+	%endif
+	
+	bsh %arg0 %arg1 %arg2
+	mov %arg0 CR
+%file_end
+
+func_def_("ret")
+%file_def "ret" // ret
+	%if (%argn != 0)
+		%error err_invalid_argument_count "0"
+	%endif
+	
+	psh (-2)
+	mov ST5 R1
+	mov CR R0 // MOVing sets the CR flag, so this must be done in this order. A ^ A = 0 so (A | A) | (A ^ A) = A
+	psh (-STACK_REGS)
+	ldi ST7 1
+	jmp ST7 CR ST5
+	nop
+	nop
+
+%file_end
+
+
+%endif

@@ -14,7 +14,7 @@ struct ParamTemplate {
 };
 
 struct InstructionTemplate {
-	size_t byteNum;
+	size_t byteNum = 0;
 	vector<ParamTemplate> params;
 };
 
@@ -51,6 +51,6 @@ struct InstrucitonParam {
 	}
 };
 
-Result assembleCode(vector<Expression> &script_, vector<Instruction> &rCode_, vector<Marker> &rMarkers_, bool addMarkers_, vector<ProcessedFile> &rFileStack_);
+Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, vector<Marker> &rMarkers_, bool addMarkers_, vector<ProcessedFile> &rFileStack_, int &rInstructionCount_);
 
 #endif

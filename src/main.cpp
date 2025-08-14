@@ -93,8 +93,9 @@ int main(int argc, char* argv[]) {
 			%marker, %file_push & %file_pop directives (for debugging), and %define, and other things that we don't care about
 	*/
 
+	int instructionCount;
 	fileStack[0] = mainFile;
-	result = assembleCode(tokScript, code, markers, addMarkers, fileStack);
+	result = assembleCode(tokScript, code, markers, addMarkers, fileStack, instructionCount);
 	if (result.code != NoError) goto end;
 	
 	size_t byteNum;
@@ -109,7 +110,7 @@ end:
 	if (result.code == NoError) {
 		string outStr =
 			"Compilation complete!\n"
-			"Program takes " + numToStr(byteNum) + " bytes (" + numToStr(code.size()) + " instructions) of memory.\n";
+			"Program takes " + numToStr(byteNum) + " bytes (" + numToStr(instructionCount) + " instructions) of memory.\n";
 
 		fputs(outStr.c_str(), stdout);
 	}

@@ -61,12 +61,12 @@ struct PreprInst {
 	vector<Expression> params;
 };
 
-static Result assembleInstruction(const InstructionTemplate &template_, const vector<Expression> &args_, uint64_t &rInst_) {
+static Result assembleInstruction(const InstructionTemplate &template_, const vector<Expression> &args_, InstructionBytes &rInst_) {
 			
 	if (args_.size() != template_.params.size())
 		return { InvalidArgumentCount, numToStr(template_.params.size()) };
 	
-	uint64_t inst = 0;
+	InstructionBytes inst = 0;
 	
 	for (int i = 0; i < args_.size(); i++) {
 		
@@ -101,12 +101,14 @@ static Result assembleInstruction(const InstructionTemplate &template_, const ve
 		*/
 	}
 	
+	inst >>= ((int)sizeof(inst) - template_.byteNum) * 8;
+
 	rInst_ = inst;
 
 	return {};
 }
 
-Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, vector<Marker> &rMarkers_, bool addMarkers_, vector<ProcessedFile> &rFileStack_) {
+Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, vector<Marker> &rMarkers_, bool addMarkers_, vector<ProcessedFile> &rFileStack_, int &rInstructionCount_) {
 	Result result = {};
 	
 	ProcessedFile mainFile = rFileStack_.front();
@@ -130,6 +132,33 @@ Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, v
 			}
 			else if (command == "%file_pop") {
 				if (rFileStack_.size() > 1) rFileStack_.pop_back();
+			}
+			else if (command == "%skip_to") { // %skip_to <byte>
+				if (line.size() != 2) {
+					return { InvalidArgumentCount, "1" };
+				}
+
+				if (line[1].type != Expression::Integer)
+					return { UnexpectedToken, line[1].toString().stringVal };
+
+				if (line[1].intVal < processedBytes)
+					return { InvalidRange, ">=" + numToStr(processedBytes)};
+
+				processedBytes = line[1].intVal;
+			}
+			else if (command == "%align") { // %align <num_of_bytes>
+				if (line.size() != 2) {
+					return { InvalidArgumentCount, "1" };
+				}
+
+				if (line[1].type != Expression::Integer)
+					return { UnexpectedToken, line[1].toString().stringVal };
+
+				int nextMultiple = ((line[1].intVal - processedBytes) % line[1].intVal);
+				if (nextMultiple < 0) nextMultiple += line[1].intVal; // a%b can be < 0 for some reason, so we need to add b again
+				nextMultiple += processedBytes;
+				
+				processedBytes = nextMultiple;
 			}
 			else {
 				if (line.size() == 2 && line[1].type == Expression::Invalid && line[1].stringVal == ":") { // : is not an operator, so it will be Expression::Invalid. but it will work
@@ -157,11 +186,15 @@ Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, v
 				}
 			}
 		}
+		else if (line[0].type == Expression::String && line.size() == 1) {
+			processedBytes += line[0].stringVal.size();
+		}
 	}
 
 	rFileStack_.clear();
 	rFileStack_.push_back(mainFile);
 
+	processedBytes = 0;
 	for (int l = 0, instIdx = 0; l < rScript_.size(); l++, rFileStack_.back().line++) {
 
 		vector<Expression> &line = rScript_[l].expressions;
@@ -183,6 +216,26 @@ Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, v
 				if (line.size() != 2) return { InvalidArgumentCount, "1" };
 				if (addMarkers_) rMarkers_.push_back({ line[1].stringVal, rCode_.size() });
 			}
+			else if (command == "%skip_to") { // %skip_to <byte>
+				size_t addedBytes = line[1].intVal - processedBytes;
+				rCode_.reserve(rCode_.size() + addedBytes);
+				for (int i = 0; i < addedBytes; i++)
+					rCode_.push_back(Instruction{ 0x00, 1 });
+
+				processedBytes = line[1].intVal;
+			}
+			else if (command == "%align") { // %align <num_of_bytes>
+				int nextMultiple = ((line[1].intVal - processedBytes) % line[1].intVal);
+				if (nextMultiple < 0) nextMultiple += line[1].intVal;
+				nextMultiple += processedBytes;
+
+				size_t addedBytes = nextMultiple - processedBytes;
+				rCode_.reserve(rCode_.size() + addedBytes);
+				for (int i = 0; i < addedBytes; i++)
+					rCode_.push_back(Instruction{ 0x00, 1 });
+
+				processedBytes += addedBytes;
+			}
 			else {
 				if (line[0].stringVal.front() == '_') {
 					replaceLabels(rScript_[l], labels);
@@ -197,13 +250,22 @@ Result assembleCode(vector<Expression> &rScript_, vector<Instruction> &rCode_, v
 					result = assembleInstruction(templs[instIdx], vector<Expression>(line.begin() + 1, line.end()), newInst);
 					if (result.code != NoError) break;
 					rCode_.push_back({ newInst, templs[instIdx].byteNum });
+					
+					processedBytes += templs[instIdx].byteNum;
 					instIdx++;
 				}
 			}
-			
+		}
+		else if (line[0].type == Expression::String && line.size() == 1) {
+			rCode_.reserve(rCode_.size() + line[0].stringVal.size());
+			for (uint8_t c : line[0].stringVal)
+				rCode_.push_back(Instruction{ c, 1 });
+			processedBytes += line[0].stringVal.size();
 		}
 		else return { UnexpectedToken, line[0].toString().stringVal };
 	}
+
+	rInstructionCount_ = templs.size();
 
 	return result;
 }
