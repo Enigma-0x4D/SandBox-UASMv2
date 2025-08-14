@@ -23,8 +23,7 @@ Compiler commands can be used to control the compilation process and manage diff
   Defines a macro.\
   Macro can be defined as global using the `global` keyword.\
   Local macros are automatically undefined when exiting the file's scope, while global macros persist until explicitly undefined.\
-  The `eval` keyword can be used to evaluate all macros used in the new macro's value.\
-  Macros work similarly to those in languages such as C or C++.
+  The `eval` keyword can be used to evaluate all macros used in the new macro's value.
 
 - `%undef ['global'] <macro>`\
   Undefines the specified macro.\

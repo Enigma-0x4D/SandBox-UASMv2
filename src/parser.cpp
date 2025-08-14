@@ -240,6 +240,7 @@ Result Expression::replaceMacros(const MacroRefMap &macroMap_) {
 				if (err.code != NoError) return err;
 			}
 			else if (expressions[e].type == Identifier) {
+
 				auto it = macroMap_.find(expressions[e].stringVal);
 				if (it != macroMap_.end()) {
 					const Expression &macro = *(it->second);
@@ -257,6 +258,8 @@ Result Expression::replaceMacros(const MacroRefMap &macroMap_) {
 					// Since the tokens are read from the end of the line, the macros in arguments will already be replaced.
 
 					if (expectedArgNum != 0) {
+						expressions[e + 1].simplify();
+
 						if (e == expressions.size() - 1 || (expressions[e + 1].expressions.size() != expectedArgNum && !(expectedArgNum == 1 && expressions[e + 1].type != NestedExpression))) {
 							return { InvalidArgumentCount, numToStr(expectedArgNum) };
 						}
@@ -265,7 +268,7 @@ Result Expression::replaceMacros(const MacroRefMap &macroMap_) {
 
 						MacroRefMap argMacros;
 						
-						if (expectedArgNum == 1 && expressions[e + 1].type != NestedExpression) {
+						if (expectedArgNum == 1 && expressions[e + 1].type != NestedExpression) { // In the case when only 1 argument is expected   macro(x) == macro x
 							argMacros[paramNames.expressions[0].stringVal] = &expressions[e + 1];
 						}
 						else for (int a = 0; a < expectedArgNum; a++) {

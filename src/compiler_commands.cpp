@@ -8,11 +8,33 @@ Result defineMacro(const vector<Expression> &line_, MacroMap &rGlobalMacros_, Ma
 
 	size_t offset = 0;
 
-	bool global = line_[1].type == Expression::Identifier && line_[1].stringVal == "global";
-	offset += global;
+	bool global = false;
+	bool evaluate = false;
 
-	bool evaluate = line_[1 + offset].type == Expression::Identifier && line_[1 + offset].stringVal == "eval";
-	offset += evaluate;
+	{
+		bool allKeywordsFound;
+		do {
+			allKeywordsFound = true;
+
+			const Expression &thisExpr = line_[1 + offset];
+
+			if (thisExpr.type == Expression::Identifier) {
+				if (thisExpr.stringVal == "global") {
+					if (global) return { UnexpectedToken, thisExpr.stringVal };
+					global = true;
+					allKeywordsFound = false;
+					offset++;
+				}
+				else if (thisExpr.stringVal == "eval") {
+					if (evaluate) return { UnexpectedToken, thisExpr.stringVal };
+					evaluate = true;
+					allKeywordsFound = false;
+					offset++;
+				}
+			}
+
+		} while (!allKeywordsFound);
+	}
 
 	Expression macroName = line_[1 + offset];
 	
