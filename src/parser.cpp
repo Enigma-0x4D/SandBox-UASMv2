@@ -85,7 +85,7 @@ void getNextToken(const char *&rTokBeg_, const char *&rTokEnd_, const char *end_
 				}
 				if (*(rTokEnd_ - 1) == rangeInd[0]) nestNum++;
 				else if (*(rTokEnd_ - 1) == rangeInd[1]) nestNum--;
-				if (nestNum == 0) return;
+				if (nestNum <= 0) return;
 
 				rTokEnd_++;
 			}
@@ -95,8 +95,8 @@ void getNextToken(const char *&rTokBeg_, const char *&rTokEnd_, const char *end_
 
 	while (true) {
 		if (rTokEnd_ == end_) return;
-		if (isOneOf(*rTokEnd_, delim_) || isOneOf(*rTokEnd_, range_) || isOneOf(*rTokEnd_, string_)) return;
-		if (isPartOfName(*rTokEnd_) != isIdentifier) return;
+		if (isOneOf(*rTokEnd_, delim_) || isOneOf(*rTokEnd_, range_, 2) /* We don't care about closing brackets */ || isOneOf(*rTokEnd_, string_)) return;
+		if (isPartOfName(*rTokEnd_) != isIdentifier) return;            // Something will eventually throw an error later in compilation
 		rTokEnd_++;
 	}
 }

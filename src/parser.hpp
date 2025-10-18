@@ -28,8 +28,8 @@ inline bool isNameValid(const string &str_) {
 	return true;
 }
 
-inline bool isOneOf(const char char_, const char *list_) {
-	for (const char *c = list_; *c != '\0'; c++)
+inline bool isOneOf(const char char_, const char *list_, int checkEvery_ = 1) { // if strlen(list_) % checkEvery_ != 0 it will crash.
+	for (const char *c = list_; *c != '\0'; c += checkEvery_)
 		if (char_ == *c) return true;
 	return false;
 }
