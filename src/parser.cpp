@@ -493,7 +493,7 @@ Expression Expression::toInt() const {
 }
 
 static inline void removeIdentifiers(Expression &rExpr_) {
-	if (rExpr_.type == Expression::Type::Identifier) rExpr_ = Expression(false); // All undefined macros and other things will be evaluated to 0.
+	if (rExpr_.type == Expression::Type::Identifier) rExpr_ = rExpr_.toString();
 	if (rExpr_.type == Expression::Type::NestedExpression)
 		for (auto &e : rExpr_.expressions) removeIdentifiers(e);
 }
@@ -507,8 +507,8 @@ Expression Expression::toBool() const {
 	switch (result.type) {
 	case Expression::Type::Float: return result.floatVal != 0.f;
 	case Expression::Type::Integer: return result.intVal != 0;
-	case Expression::Type::NestedExpression: // <-- Should be evaluated ealier. If it didn't, it means it contains an identifier.
-	case Expression::Type::String: return true; // why not?
+	case Expression::Type::NestedExpression: // <-- Should have been evaluated ealier. If not, it contains an identifier.
+	case Expression::Type::String: return false; // Strings & unresolved identifiers
 	case Expression::Type::Invalid:
 	case Expression::Type::Operator: return toInvalid();
 	}
